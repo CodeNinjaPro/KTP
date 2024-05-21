@@ -1,0 +1,17 @@
+I want to develop project for a garden. i want to read data remotly ( i mean on same local network )
+
+
+used devices->
+
+* Raspberry Pi 4 Model B
+sensors->
+* DHT22 Temperature & Humidity Sensor
+* Soil Moisture Sensor Kit
+
+
+storage methods->
+* Google Cloud IoT ( directly upload from raspberry )
+* mongodb ( using main computer connected thorugh wifi to raspberry )
+
+
+
