@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greenhouse Dashboard</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        .container {
+            padding-top: 50px;
+        }
+        canvas {
+            max-width: 100%;
+        }
+        .alert {
+            background-color: #ffdddd;
+            border-left: 6px solid #f44336;
+            margin-bottom: 15px;
+            padding: 15px;
+            font-size: 1.2em;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Greenhouse Monitoring Dashboard</h1>
+        <div id="alert" class="alert text-center"></div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 id="temperatureTitle">Temperature (°C): 0</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="temperatureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 id="humidityTitle">Humidity (%): 0</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="humidityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 id="vwcTitle">VWC (%): 0</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="vwcChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const alertBox = document.getElementById('alert');
+        const temperatureTitle = document.getElementById('temperatureTitle');
+        const humidityTitle = document.getElementById('humidityTitle');
+        const vwcTitle = document.getElementById('vwcTitle');
+
+        function createChart(ctx, label, color) {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        backgroundColor: color,
+                        borderColor: color,
+                        data: [],
+                        fill: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'second',
+                                tooltipFormat: 'HH:mm:ss'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: label
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const temperatureChart = createChart(document.getElementById('temperatureChart').getContext('2d'), 'Temperature (°C)', 'red');
+        const humidityChart = createChart(document.getElementById('humidityChart').getContext('2d'), 'Humidity (%)', 'blue');
+        const vwcChart = createChart(document.getElementById('vwcChart').getContext('2d'), 'VWC (%)', 'green');
+
+        socket.on('updateData', (data) => {
+            const time = new Date();
+            if (temperatureChart.data.labels.length > 10) {
+                temperatureChart.data.labels.shift();
+                temperatureChart.data.datasets[0].data.shift();
+                humidityChart.data.labels.shift();
+                humidityChart.data.datasets[0].data.shift();
+                vwcChart.data.labels.shift();
+                vwcChart.data.datasets[0].data.shift();
+            }
+            temperatureChart.data.labels.push(time);
+            temperatureChart.data.datasets[0].data.push(data.temperature);
+            humidityChart.data.labels.push(time);
+            humidityChart.data.datasets[0].data.push(data.humidity);
+            vwcChart.data.labels.push(time);
+            vwcChart.data.datasets[0].data.push(data.vwc);
+
+            temperatureTitle.textContent = `Temperature (°C): ${data.temperature.toFixed(2)}`;
+            humidityTitle.textContent = `Humidity (%): ${data.humidity.toFixed(2)}`;
+            vwcTitle.textContent = `VWC (%): ${data.vwc.toFixed(2)}`;
+
+            temperatureChart.update();
+            humidityChart.update();
+            vwcChart.update();
+        });
+
+        socket.on('alert', (data) => {
+            alertBox.innerText = data.message;
+            alertBox.style.display = 'block';
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        });
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
