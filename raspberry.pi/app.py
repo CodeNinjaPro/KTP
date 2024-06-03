@@ -1,16 +1,19 @@
-import Adafruit_DHT
+import adafruit_dht
+import board
 import RPi.GPIO as GPIO
 import redis
 import time
 import json
 
 # Configuration
-DHT_SENSOR = Adafruit_DHT.DHT22
-DHT_PIN = 4  # GPIO pin connected to the DHT22 sensor
+DHT_PIN = board.D4  # GPIO pin connected to the DHT22 sensor
 MOISTURE_PIN = 17  # GPIO pin connected to the Moisture Sensor Comparator Board
 REDIS_HOST = 'localhost'  # Redis server hostname
 REDIS_PORT = 6379  # Redis server port
 DEVICE_ID = 1  # Device ID
+
+# Initialize DHT22 sensor
+dht_device = adafruit_dht.DHT22(DHT_PIN)
 
 # Initialize GPIO
 GPIO.setmode(GPIO.BCM)
@@ -20,11 +23,17 @@ GPIO.setup(MOISTURE_PIN, GPIO.IN)
 redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 def read_sensors():
-    humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
-    if humidity is None or temperature is None:
+    try:
+        temperature = dht_device.temperature
+        humidity = dht_device.humidity
+        if temperature is None or humidity is None:
+            return None, None, None
+    except RuntimeError as err:
+        print(f"DHT22 error: {err.args[0]}")
         return None, None, None
+
     moisture = GPIO.input(MOISTURE_PIN)
-    vwc = moisture / 1023.0  # Convert to volumetric water content (example calculation)
+    vwc = moisture  # Example calculation; adjust as needed for your sensor
     return temperature, humidity, vwc
 
 def broadcast_data(data):
